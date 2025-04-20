@@ -5,11 +5,11 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 import base64
 
-# Set page configuration (MUST BE THE FIRST STREAMLIT COMMAND)
+# Set page configuration
 st.set_page_config(page_title="Water Quality Prediction", page_icon="💧", layout="wide")
 
 
-# Function to set background image
+# Background image
 def set_background(image_file):
     with open(image_file, "rb") as f:
         encoded_string = base64.b64encode(f.read()).decode()
@@ -47,31 +47,29 @@ def set_background(image_file):
     st.markdown(bg_css, unsafe_allow_html=True)
 
 
-# Set background image
-set_background("futuristic-science-lab-background_23-2148505015.jpg")  # Replace with your image file path
+set_background("futuristic-science-lab-background_23-2148505015.jpg")
 
-# Load the model
+# Load model and scaler
 try:
     model = joblib.load("svm.pkl")
-    #st.success("Model loaded successfully!")
+    scaler = joblib.load("scaler.pkl")
 except Exception as e:
-    st.error(f"Error loading the model: {e}")
+    st.error(f"Error loading model or scaler: {e}")
     st.stop()
 
-# Define safe thresholds for each parameter (updated based on Kaggle info)
+# Safe thresholds
 safe_thresholds = {
-    "pH Level": {"min": 6.5, "max": 8.5},  # WHO standard
-    "Hardness": {"max": 200},  # No specific WHO limit, but high hardness can affect taste
-    "Solids": {"max": 500},  # Desirable limit for TDS
-    "Chloramines": {"max": 4},  # Safe level for drinking water
-    "Sulfate": {"max": 250},  # Higher concentrations may affect taste
-    "Conductivity": {"max": 400},  # WHO standard
-    "Organic Carbon": {"max": 4},  # US EPA standard for source water
-    "Trihalomethanes": {"max": 80},  # Safe level for drinking water
-    "Turbidity": {"max": 5},  # WHO recommended value
+    "pH Level": {"min": 6.5, "max": 8.5},
+    "Hardness": {"max": 200},
+    "Solids": {"max": 500},
+    "Chloramines": {"max": 4},
+    "Sulfate": {"max": 250},
+    "Conductivity": {"max": 400},
+    "Organic Carbon": {"max": 4},
+    "Trihalomethanes": {"max": 80},
+    "Turbidity": {"max": 5},
 }
 
-# Mapping Armenian labels to English safe_threshold keys
 armenian_to_english = {
     "pH մակարդակ/թթվայնություն": "pH Level",
     "Կարծրություն": "Hardness",
@@ -85,13 +83,10 @@ armenian_to_english = {
 }
 
 
-# Function to check unsafe parameters
 def check_unsafe_parameters(input_values, safe_thresholds, input_labels, language):
     unsafe_parameters = []
     for i, (param, value) in enumerate(zip(input_labels, input_values)):
-        # Convert Armenian labels to English for threshold checking
-        param_key = armenian_to_english.get(param, param)  # If not Armenian, keep the same
-
+        param_key = armenian_to_english.get(param, param)
         if param_key in safe_thresholds:
             thresholds = safe_thresholds[param_key]
             if "min" in thresholds and value < thresholds["min"]:
@@ -100,14 +95,13 @@ def check_unsafe_parameters(input_values, safe_thresholds, input_labels, languag
             if "max" in thresholds and value > thresholds["max"]:
                 reason = f"{param} շատ բարձր է (առավելագույն՝ {thresholds['max']}, ընթացիկ՝ {value})" if language == "Հայերեն" else f"{param} is too high (max: {thresholds['max']}, current: {value})"
                 unsafe_parameters.append(reason)
-
     return unsafe_parameters
 
 
-# Language Selection
+# Language selection
 language = st.radio("🌍 Select Language / Ընտրեք Լեզուն", ("English", "Հայերեն"))
 
-# Define text based on language
+# Localized UI content
 if language == "English":
     title = "💧 Water Quality Prediction"
     subtitle = "Check if the water is safe to drink!"
@@ -116,69 +110,119 @@ if language == "English":
     predict_button = "Predict Water Quality"
     safe_text = "✅ Safe to drink!"
     unsafe_text = "❌ Unsafe! Do not drink!"
-    about_title = "## About us"
-    about_text = "### This website predicts water quality based on various parameters. Use the inputs to enter values and click 'Predict Water Quality' to see the result."
-    footer_text = "###### Made by Manan Mkrtchyan"
+    upload_label = "📁 Upload CSV File"
+    upload_help = "Upload a CSV file with 9 columns of water quality parameters"
+    download_label = "📥 Download Results"
+    column_warning = "Error: CSV must contain exactly 9 numeric columns"
+    numeric_warning = "Error: All values must be numbers"
+    success_label = "✅ Prediction completed!"
+    file_error = "File processing error. Please check:"
+    file_requirements = [
+        "- Exactly 9 columns",
+        "- Numeric values only",
+        "- UTF-8 or Latin-1 encoding",
+        "- No header row or matching column names"
+    ]
 else:
     title = "💧 Ջրի Որակի Կանխատեսում"
-    subtitle = "Ստուգեք՝ ջուրը խմելու համար անվտանգ է,թե ոչ։"
+    subtitle = "Ստուգեք՝ ջուրը խմելու համար անվտանգ է, թե ոչ։"
     input_labels = ["pH մակարդակ/թթվայնություն", "Կարծրություն", "Լուծված պինդ նյութեր", "Քլորամիններ", "Սուլֆատներ",
                     "Էլեկտրահաղորդականություն", "Օրգանական ածխածին", "Տրիալոմեթաններ", "Պղտորություն"]
     predict_button = "Կանխատեսել Ջրի Որակը"
     safe_text = "✅ Անվտանգ է խմելու համար!"
     unsafe_text = "❌ Վտանգավոր է! Մի խմեք!"
-    about_title = "### Մեր Մասին"
-    about_text = "#### Այս հավելվածը կանխատեսում է ջրի որակը՝ հիմնվելով տարբեր պարամետրերի վրա։ Մուտքագրեք տվյալները և սեղմեք «Կանխատեսել Ջրի Որակը»՝ արդյունքը տեսնելու համար։"
-    footer_text = "###### Ստեղծվել է Մանան Մկրտչյանի կողմից"
+    upload_label = "📁 CSV Ֆայլ Վերբեռնել"
+    upload_help = "Վերբեռնեք ջրի որակի 9 պարամետրեր պարունակող CSV ֆայլ"
+    download_label = "📥 Արդյունքները Ներբեռնել"
+    column_warning = "Սխալ․ CSV ֆայլը պետք է պարունակի ճիշտ 9 թվային սյունակ"
+    numeric_warning = "Սխալ․ Բոլոր արժեքները պետք է լինեն թվեր"
+    success_label = "✅ Կանխատեսումը հաջողված է!"
+    file_error = "Ֆայլի մշակման սխալ։ Ստուգեք՝"
+    file_requirements = [
+        "- Ճիշտ 9 սյունակ",
+        "- Միայն թվային արժեքներ",
+        "- UTF-8 կամ Latin-1 կոդավորում",
+        "- Առանց վերնագրի տողի կամ համապատասխան սյունակների անունների"
+    ]
 
 # Title and Subtitle
 st.markdown(f"<h1 style='text-align: center; font-size: 2.5em;'>{title}</h1>", unsafe_allow_html=True)
 st.markdown(f"<h3 style='text-align: center; font-size: 1.5em;'>{subtitle}</h3>", unsafe_allow_html=True)
 
-# Create input fields in columns with a modern layout
+# Manual Input UI
 col1, col2 = st.columns(2)
-
 with col1:
-    ph = st.number_input(input_labels[0], value=0.0, step=0.1, format="%.2f", key="ph")
-    hardness = st.number_input(input_labels[1], value=0.0, step=1.0, format="%.2f", key="hardness")
-    solids = st.number_input(input_labels[2], value=0.0, step=1.0, format="%.2f", key="solids")
-    chloramines = st.number_input(input_labels[3], value=0.0, step=0.1, format="%.2f", key="chloramines")
-    sulfate = st.number_input(input_labels[4], value=0.0, step=1.0, format="%.2f", key="sulfate")
-
+    ph = st.number_input(input_labels[0], value=0.0, step=0.1, format="%.2f")
+    hardness = st.number_input(input_labels[1], value=0.0, step=1.0, format="%.2f")
+    solids = st.number_input(input_labels[2], value=0.0, step=1.0, format="%.2f")
+    chloramines = st.number_input(input_labels[3], value=0.0, step=0.1, format="%.2f")
+    sulfate = st.number_input(input_labels[4], value=0.0, step=1.0, format="%.2f")
 with col2:
-    conductivity = st.number_input(input_labels[5], value=0.0, step=1.0, format="%.2f", key="conductivity")
-    organicCarbon = st.number_input(input_labels[6], value=0.0, step=0.1, format="%.2f", key="organicCarbon")
-    trihalomethanes = st.number_input(input_labels[7], value=00.0, step=1.0, format="%.2f", key="trihalomethanes")
-    turbidity = st.number_input(input_labels[8], value=0.0, step=0.1, format="%.2f", key="turbidity")
+    conductivity = st.number_input(input_labels[5], value=0.0, step=1.0, format="%.2f")
+    organicCarbon = st.number_input(input_labels[6], value=0.0, step=0.1, format="%.2f")
+    trihalomethanes = st.number_input(input_labels[7], value=0.0, step=1.0, format="%.2f")
+    turbidity = st.number_input(input_labels[8], value=0.0, step=0.1, format="%.2f")
 
-# Predict button with a sleek design
 if st.button(predict_button):
-    input_values = [ph, hardness, solids, chloramines, sulfate, conductivity, organicCarbon, trihalomethanes, turbidity]
+    input_values = [ph, hardness, solids, chloramines, sulfate,
+                    conductivity, organicCarbon, trihalomethanes, turbidity]
     try:
-        # Scale the input values (if required by the model)
-        scaler = StandardScaler()
-        input_values_scaled = scaler.fit_transform([input_values])
-
-        # Make prediction
+        input_values_scaled = scaler.transform([input_values])
         prediction = model.predict(input_values_scaled)[0]
         if prediction == 1:
             st.success(safe_text)
         else:
             st.error(unsafe_text)
-            # Check for unsafe parameters
-            unsafe_parameters = check_unsafe_parameters(input_values, safe_thresholds, input_labels, language)
-            if unsafe_parameters:
-                if language == "English":
-                    st.markdown("**Reasons why the water is unsafe:**")
-                else:
-                    st.markdown("**Ջրի անվտանգ չլինելու պատճառները.**")
-                for reason in unsafe_parameters:
-                    st.write(f"- {reason}")
+            reasons = check_unsafe_parameters(input_values, safe_thresholds, input_labels, language)
+            for r in reasons:
+                st.write(f"- {r}")
     except Exception as e:
-        st.error(f"Error making prediction: {e}")
+        st.error(f"Prediction error: {e}")
 
-# Footer
-st.markdown("---")
-st.markdown(about_title)
-st.markdown(about_text)
-st.markdown(footer_text)
+# CSV Upload Section
+st.markdown(f"### {upload_label}")
+uploaded_file = st.file_uploader(upload_help, type=["csv"])
+
+if uploaded_file is not None:
+    try:
+        # Try multiple encodings
+        try:
+            df = pd.read_csv(uploaded_file)
+        except UnicodeDecodeError:
+            uploaded_file.seek(0)  # Reset file pointer
+            df = pd.read_csv(uploaded_file, encoding='latin1')
+
+        # Validate shape
+        if df.shape[1] != 9:
+            st.error(column_warning)
+            st.stop()
+
+        # Validate numeric data
+        if not all([pd.api.types.is_numeric_dtype(df[col]) for col in df.columns]):
+            st.error(numeric_warning)
+            st.stop()
+
+        # Process data
+        st.dataframe(df)
+        scaled_data = scaler.transform(df)
+        preds = model.predict(scaled_data)
+        df['Prediction'] = ['✅ ' + safe_text.split('✅ ')[1] if p == 1 else '❌ ' + unsafe_text.split('❌ ')[1] for p in
+                            preds]
+
+        st.success(success_label)
+        st.dataframe(df)
+
+        # Prepare download
+        csv_output = df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label=download_label,
+            data=csv_output,
+            file_name="water_quality_results.csv",
+            mime='text/csv'
+        )
+
+    except Exception as e:
+        st.error(file_error)
+        for req in file_requirements:
+            st.error(req)
+        st.error(f"Technical details: {str(e)}")
