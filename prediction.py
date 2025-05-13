@@ -208,6 +208,9 @@ if uploaded_file is not None:
         preds = model.predict(scaled_data)
         df['Prediction'] = ['✅ ' + safe_text.split('✅ ')[1] if p == 1 else '❌ ' + unsafe_text.split('❌ ')[1] for p in
                             preds]
+        from datetime import datetime
+        df['Timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                            
 
         st.success(success_label)
         st.dataframe(df)
